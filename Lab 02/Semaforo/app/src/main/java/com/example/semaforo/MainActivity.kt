@@ -83,7 +83,6 @@ fun TrafficLightScreen() {
 
             // CONTENEDOR SEMÁFORO + PALO
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-
                 // CABEZA DEL SEMÁFORO
                 Box(
                     modifier = Modifier
