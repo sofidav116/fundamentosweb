@@ -114,7 +114,6 @@ fun CharacterSheetScreen() {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             // -----------------------------------------------------------------
             // STAT ROWS (PASO 1)
             // -----------------------------------------------------------------
@@ -123,13 +122,11 @@ fun CharacterSheetScreen() {
                 value = vit,
                 onRollFinished = { vit = it }
             )
-
             StatRow(
                 name = "Dexterity",
                 value = dex,
                 onRollFinished = { dex = it }
             )
-
             StatRow(
                 name = "Wisdom",
                 value = wis,
