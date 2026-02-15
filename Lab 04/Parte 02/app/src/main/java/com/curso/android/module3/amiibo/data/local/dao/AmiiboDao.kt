@@ -238,6 +238,5 @@ interface AmiiboDao {
  *    @Delete
  *    suspend fun delete(amiibo: AmiiboEntity)
  *    ```
- *
  * ============================================================================
  */

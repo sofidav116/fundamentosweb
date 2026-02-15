@@ -950,7 +950,6 @@ private fun AmiiboCard(
         }
     }
 }
-
 /**
  * ============================================================================
  * NOTAS ADICIONALES SOBRE COMPOSE
