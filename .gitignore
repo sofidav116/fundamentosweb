@@ -1,0 +1,10 @@
+# Archivos de Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Carpetas de módulos que no deben subirse
+MODULOS/module3-amiibovault/
+MODULOS/aplicaciones-web-avanzadas/
+
+# Archivos temporales
+deviceManager.xml
