@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -121,6 +122,38 @@ class ChefViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    // =========================================================================
+    // FILTRO DE FAVORITOS
+    // =========================================================================
+
+    /**
+     * Controla si se muestra solo la vista "Solo favoritos"
+     */
+    private val _showOnlyFavorites = MutableStateFlow(false)
+    val showOnlyFavorites: StateFlow<Boolean> = _showOnlyFavorites.asStateFlow()
+
+    /**
+     * Lista de recetas filtrada según el estado de favoritos
+     *
+     * CONCEPTO: combine
+     * Combina dos Flows (recipes + showOnlyFavorites) y emite
+     * cada vez que cualquiera de los dos cambia.
+     */
+    val filteredRecipes: StateFlow<List<Recipe>> = combine(recipes, _showOnlyFavorites) { list, onlyFavorites ->
+        if (onlyFavorites) list.filter { it.isFavorite } else list
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    /**
+     * Alterna el filtro de favoritos
+     */
+    fun toggleFavoritesFilter() {
+        _showOnlyFavorites.value = !_showOnlyFavorites.value
+    }
 
     // =========================================================================
     // ESTADO DE GENERACIÓN DE RECETAS
@@ -282,6 +315,22 @@ class ChefViewModel @Inject constructor(
     fun deleteRecipe(recipeId: String) {
         viewModelScope.launch {
             firestoreRepository.deleteRecipe(recipeId)
+        }
+    }
+
+    /**
+     * Alterna el estado de favorito de una receta
+     *
+     * CONCEPTO: UI Optimista
+     * El corazón se activa instantáneamente en la UI antes de confirmar
+     * con Firestore. Si falla, Firestore revierte el estado via el listener
+     * en tiempo real.
+     *
+     * @param recipe Receta a alternar
+     */
+    fun toggleFavorite(recipe: Recipe) {
+        viewModelScope.launch {
+            firestoreRepository.toggleFavorite(recipe.id, !recipe.isFavorite)
         }
     }
 

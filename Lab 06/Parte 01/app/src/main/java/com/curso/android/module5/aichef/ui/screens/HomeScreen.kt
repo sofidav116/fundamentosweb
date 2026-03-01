@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material3.Card
@@ -32,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,8 +73,9 @@ fun HomeScreen(
     onNavigateToDetail: (String) -> Unit,
     onLogout: () -> Unit
 ) {
-    // Observar lista de recetas
-    val recipes by viewModel.recipes.collectAsStateWithLifecycle()
+    // Observar lista de recetas filtrada según el estado de favoritos
+    val filteredRecipes by viewModel.filteredRecipes.collectAsStateWithLifecycle()
+    val showOnlyFavorites by viewModel.showOnlyFavorites.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -81,6 +86,18 @@ fun HomeScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
                 actions = {
+                    // =========================================================
+                    // BOTÓN FILTRO DE FAVORITOS
+                    // =========================================================
+                    // Alterna entre mostrar todas las recetas o solo favoritas.
+                    // El corazón se rellena cuando el filtro está activo.
+                    IconButton(onClick = { viewModel.toggleFavoritesFilter() }) {
+                        Icon(
+                            imageVector = if (showOnlyFavorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (showOnlyFavorites) "Mostrar todas" else "Solo favoritos",
+                            tint = if (showOnlyFavorites) Color.Red else MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                     IconButton(
                         onClick = {
                             viewModel.signOut()
@@ -107,7 +124,7 @@ fun HomeScreen(
             }
         }
     ) { paddingValues ->
-        if (recipes.isEmpty()) {
+        if (filteredRecipes.isEmpty()) {
             // Estado vacío
             EmptyRecipesState(
                 modifier = Modifier
@@ -124,12 +141,13 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(
-                    items = recipes,
+                    items = filteredRecipes,
                     key = { it.id } // Clave única para optimización
                 ) { recipe ->
                     RecipeCard(
                         recipe = recipe,
-                        onClick = { onNavigateToDetail(recipe.id) }
+                        onClick = { onNavigateToDetail(recipe.id) },
+                        onToggleFavorite = { viewModel.toggleFavorite(recipe) }
                     )
                 }
             }
@@ -144,7 +162,8 @@ fun HomeScreen(
 @Composable
 private fun RecipeCard(
     recipe: Recipe,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -160,7 +179,7 @@ private fun RecipeCard(
                 .padding(16.dp)
         ) {
             // Icono y título
-            androidx.compose.foundation.layout.Row(
+            Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -183,6 +202,20 @@ private fun RecipeCard(
                         text = formatDate(recipe.createdAt),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // =========================================================
+                // ÍCONO DE FAVORITO EN CADA TARJETA
+                // =========================================================
+                // Corazón relleno = favorito, delineado = no favorito.
+                // stopPropagation implícito: el IconButton consume el click
+                // sin disparar el onClick de la Card.
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (recipe.isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
+                        tint = if (recipe.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

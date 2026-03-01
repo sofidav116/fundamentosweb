@@ -17,6 +17,7 @@ package com.curso.android.module5.aichef.domain.model
  * - imageUri: URI de la imagen original (opcional)
  * - generatedImageUrl: URL de la imagen del plato generada por IA (cache en Storage)
  * - createdAt: Timestamp de creación
+ * - isFavorite: Indica si la receta está marcada como favorita
  *
  * =============================================================================
  */
@@ -28,7 +29,8 @@ data class Recipe(
     val steps: List<String> = emptyList(),
     val imageUri: String = "",
     val generatedImageUrl: String = "",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val isFavorite: Boolean = false
 ) {
     /**
      * Convierte el modelo a un Map para guardar en Firestore
@@ -45,7 +47,8 @@ data class Recipe(
         "steps" to steps,
         "imageUri" to imageUri,
         "generatedImageUrl" to generatedImageUrl,
-        "createdAt" to createdAt
+        "createdAt" to createdAt,
+        "isFavorite" to isFavorite
     )
 
     companion object {
@@ -66,7 +69,8 @@ data class Recipe(
                 steps = (data["steps"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                 imageUri = data["imageUri"] as? String ?: "",
                 generatedImageUrl = data["generatedImageUrl"] as? String ?: "",
-                createdAt = (data["createdAt"] as? Long) ?: System.currentTimeMillis()
+                createdAt = (data["createdAt"] as? Long) ?: System.currentTimeMillis(),
+                isFavorite = data["isFavorite"] as? Boolean ?: false
             )
         }
     }

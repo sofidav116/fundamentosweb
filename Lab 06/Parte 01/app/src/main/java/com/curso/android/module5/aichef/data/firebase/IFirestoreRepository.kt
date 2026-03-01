@@ -57,4 +57,12 @@ interface IFirestoreRepository {
      * @return Result indicando éxito o error
      */
     suspend fun updateGeneratedImageUrl(recipeId: String, imageUrl: String): Result<Unit>
+
+    /**
+     * Alterna el estado de favorito de una receta
+     * @param recipeId ID del documento
+     * @param isFavorite Nuevo valor del estado favorito
+     * @return Result indicando éxito o error
+     */
+    suspend fun toggleFavorite(recipeId: String, isFavorite: Boolean): Result<Unit>
 }
