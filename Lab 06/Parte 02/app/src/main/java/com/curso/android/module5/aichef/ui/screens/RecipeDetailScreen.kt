@@ -1,5 +1,6 @@
 package com.curso.android.module5.aichef.ui.screens
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -36,17 +38,27 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.curso.android.module5.aichef.domain.model.UiState
 import com.curso.android.module5.aichef.ui.viewmodel.ChefViewModel
+import com.curso.android.module5.aichef.util.ShareUtils
+import kotlinx.coroutines.launch
 
 /**
  * =============================================================================
@@ -134,6 +146,13 @@ fun RecipeDetailScreen(
     // Estado de la generación de imagen
     val imageState by viewModel.imageGenerationState.collectAsStateWithLifecycle()
 
+    // Context y scope para compartir
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // Estado de carga del share
+    var isSharing by remember { mutableStateOf(false) }
+
     // =========================================================================
     // SIDE EFFECT: Verificar Cache o Generar Imagen
     // =========================================================================
@@ -188,6 +207,70 @@ fun RecipeDetailScreen(
                                 imageVector = if (it.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = if (it.isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
                                 tint = if (it.isFavorite) Color.Red else MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+
+                    // =========================================================
+                    // BOTÓN COMPARTIR
+                    // =========================================================
+                    // Captura la receta como imagen y lanza el selector
+                    // nativo de Android para compartir.
+                    // Se deshabilita mientras se está preparando el share.
+                    IconButton(
+                        onClick = {
+                            recipe?.let { currentRecipe ->
+                                scope.launch {
+                                    isSharing = true
+                                    try {
+                                        // Obtener bitmap de la imagen del plato si existe
+                                        val dishBitmap = if (imageState is UiState.Success) {
+                                            val imageUrl = (imageState as UiState.Success).data
+                                            // Cargar bitmap desde URL usando Coil
+                                            val request = ImageRequest.Builder(context)
+                                                .data(imageUrl)
+                                                .build()
+                                            val result = context.imageLoader.execute(request)
+                                            if (result is SuccessResult) {
+                                                (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                                            } else null
+                                        } else null
+
+                                        // Crear bitmap con info de la receta
+                                        val shareBitmap = ShareUtils.createShareableBitmap(
+                                            recipeTitle = currentRecipe.title,
+                                            ingredients = currentRecipe.ingredients,
+                                            dishImageBitmap = dishBitmap
+                                        )
+
+                                        // Guardar en caché y obtener URI
+                                        val imageUri = ShareUtils.saveBitmapToCache(context, shareBitmap)
+
+                                        // Lanzar selector nativo de Android
+                                        ShareUtils.launchShareIntent(context, imageUri, currentRecipe.title)
+
+                                        // Limpiar archivos temporales
+                                        ShareUtils.cleanupSharedImages(context)
+
+                                    } finally {
+                                        isSharing = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isSharing
+                    ) {
+                        if (isSharing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Compartir receta",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }

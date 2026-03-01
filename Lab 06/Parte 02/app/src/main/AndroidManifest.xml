@@ -41,6 +41,23 @@ IMPORTANTE SOBRE SEGURIDAD:
             </intent-filter>
         </activity>
 
+        <!--
+        FileProvider para compartir archivos temporales con otras apps
+        CONCEPTO: FileProvider
+        Android no permite compartir archivos directamente por seguridad.
+        FileProvider genera URIs seguras para que otras apps puedan
+        acceder temporalmente a nuestros archivos.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
+
     </application>
 
 </manifest>

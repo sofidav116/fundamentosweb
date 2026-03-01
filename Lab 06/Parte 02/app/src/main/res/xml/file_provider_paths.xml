@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+FileProvider Paths - Rutas permitidas para compartir archivos
+CONCEPTO: Por seguridad, FileProvider solo puede compartir archivos
+de rutas específicas declaradas aquí.
+cache-path: Archivos en getCacheDir() - ideales para temporales
+-->
+<paths>
+    <cache-path
+        name="shared_images"
+        path="images/" />
+</paths>
