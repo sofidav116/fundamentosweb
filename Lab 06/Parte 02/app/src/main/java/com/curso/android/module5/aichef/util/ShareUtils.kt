@@ -183,12 +183,12 @@ object ShareUtils {
             val imagesDir = File(context.cacheDir, "images")
             imagesDir.mkdirs()
 
-            // Crear archivo temporal
-            val imageFile = File(imagesDir, "recipe_share_${System.currentTimeMillis()}.png")
+            // Crear archivo temporal en formato JPEG para mayor compatibilidad
+            val imageFile = File(imagesDir, "recipe_share_${System.currentTimeMillis()}.jpg")
 
-            // Guardar bitmap como PNG
+            // Guardar bitmap como JPEG
             FileOutputStream(imageFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 95, out)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
             }
 
             // Generar URI segura con FileProvider
@@ -217,14 +217,75 @@ object ShareUtils {
      */
     fun launchShareIntent(context: Context, imageUri: Uri, recipeTitle: String) {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/png"
+            type = "image/jpeg"
             putExtra(Intent.EXTRA_STREAM, imageUri)
             putExtra(Intent.EXTRA_TEXT, "¡Mira esta receta que generé con AI Chef: $recipeTitle! 🍽️✨")
-            // Permiso temporal para que la app receptora lea el archivo
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         }
 
-        // Crear chooser con título personalizado
+        // Dar permisos explícitos a TODAS las apps que puedan recibir el intent
+        val chooser = Intent.createChooser(shareIntent, "Compartir receta via...")
+        val resInfoList = context.packageManager.queryIntentActivities(chooser, 0)
+        resInfoList.forEach { resolveInfo ->
+            val packageName = resolveInfo.activityInfo.packageName
+            context.grantUriPermission(
+                packageName,
+                imageUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
+    }
+
+    /**
+     * Lanza el selector compartiendo imagen del plato + texto con la receta completa
+     *
+     * CONCEPTO: Compartir imagen real del plato generado por IA
+     * En lugar de una tarjeta dibujada, compartimos directamente la imagen
+     * generada por Gemini junto con el texto completo de la receta.
+     *
+     * @param context Contexto de la app
+     * @param imageUri URI de la imagen del plato a compartir
+     * @param text Texto completo de la receta
+     */
+    fun launchShareIntentWithText(context: Context, imageUri: Uri, text: String) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/jpeg"
+            putExtra(Intent.EXTRA_STREAM, imageUri)
+            putExtra(Intent.EXTRA_TEXT, text)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+
+        // Dar permisos explícitos a todas las apps receptoras
+        val chooser = Intent.createChooser(shareIntent, "Compartir receta via...")
+        val resInfoList = context.packageManager.queryIntentActivities(chooser, 0)
+        resInfoList.forEach { resolveInfo ->
+            val packageName = resolveInfo.activityInfo.packageName
+            context.grantUriPermission(
+                packageName,
+                imageUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
+    }
+
+    /**
+     * Lanza el selector compartiendo solo texto (cuando no hay imagen disponible)
+     *
+     * @param context Contexto de la app
+     * @param text Texto completo de la receta
+     */
+    fun launchShareTextOnly(context: Context, text: String) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
         val chooser = Intent.createChooser(shareIntent, "Compartir receta via...")
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)

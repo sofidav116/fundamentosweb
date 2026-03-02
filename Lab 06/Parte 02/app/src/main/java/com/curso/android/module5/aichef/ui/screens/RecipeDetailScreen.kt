@@ -214,43 +214,61 @@ fun RecipeDetailScreen(
                     // =========================================================
                     // BOTÓN COMPARTIR
                     // =========================================================
-                    // Captura la receta como imagen y lanza el selector
-                    // nativo de Android para compartir.
-                    // Se deshabilita mientras se está preparando el share.
+                    // Comparte la imagen del plato generada por IA junto con
+                    // el texto completo de la receta (título, ingredientes,
+                    // pasos y link de la foto).
                     IconButton(
                         onClick = {
                             recipe?.let { currentRecipe ->
                                 scope.launch {
                                     isSharing = true
                                     try {
-                                        // Obtener bitmap de la imagen del plato si existe
-                                        val dishBitmap = if (imageState is UiState.Success) {
-                                            val imageUrl = (imageState as UiState.Success).data
-                                            // Cargar bitmap desde URL usando Coil
+                                        // Obtener URL de la imagen - primero del estado, luego de la receta guardada
+                                        val imageUrl = when {
+                                            imageState is UiState.Success -> (imageState as UiState.Success).data
+                                            currentRecipe.generatedImageUrl.isNotBlank() -> currentRecipe.generatedImageUrl
+                                            else -> ""
+                                        }
+
+                                        // Construir texto completo de la receta
+                                        val ingredientesTexto = currentRecipe.ingredients.joinToString("\n") { "• $it" }
+                                        val pasosTexto = currentRecipe.steps.mapIndexed { i, step -> "${i + 1}. $step" }.joinToString("\n")
+                                        val fotoTexto = if (imageUrl.isNotBlank()) "\n\n🖼️ FOTO DEL PLATO:\n$imageUrl" else ""
+
+                                        val shareText = """
+🍳 RECETA: ${currentRecipe.title}
+
+🥗 INGREDIENTES:
+$ingredientesTexto
+
+👨‍🍳 PREPARACIÓN:
+$pasosTexto$fotoTexto
+
+Compartido desde AI Chef 🚀
+                                        """.trimIndent()
+
+                                        // Si hay imagen del plato, compartir imagen + texto
+                                        if (imageUrl.isNotBlank()) {
                                             val request = ImageRequest.Builder(context)
                                                 .data(imageUrl)
                                                 .build()
                                             val result = context.imageLoader.execute(request)
-                                            if (result is SuccessResult) {
+                                            val dishBitmap = if (result is SuccessResult) {
                                                 (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
                                             } else null
-                                        } else null
 
-                                        // Crear bitmap con info de la receta
-                                        val shareBitmap = ShareUtils.createShareableBitmap(
-                                            recipeTitle = currentRecipe.title,
-                                            ingredients = currentRecipe.ingredients,
-                                            dishImageBitmap = dishBitmap
-                                        )
-
-                                        // Guardar en caché y obtener URI
-                                        val imageUri = ShareUtils.saveBitmapToCache(context, shareBitmap)
-
-                                        // Lanzar selector nativo de Android
-                                        ShareUtils.launchShareIntent(context, imageUri, currentRecipe.title)
-
-                                        // Limpiar archivos temporales
-                                        ShareUtils.cleanupSharedImages(context)
+                                            if (dishBitmap != null) {
+                                                // Guardar imagen del plato en caché y compartir
+                                                val imageUri = ShareUtils.saveBitmapToCache(context, dishBitmap)
+                                                ShareUtils.launchShareIntentWithText(context, imageUri, shareText)
+                                            } else {
+                                                // No se pudo cargar la imagen, compartir solo texto
+                                                ShareUtils.launchShareTextOnly(context, shareText)
+                                            }
+                                        } else {
+                                            // Sin imagen, compartir solo texto
+                                            ShareUtils.launchShareTextOnly(context, shareText)
+                                        }
 
                                     } finally {
                                         isSharing = false
