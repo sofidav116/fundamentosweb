@@ -68,7 +68,10 @@ let errorMessage: HTMLElement;
 let emptyState: HTMLElement;
 let noResultsState: HTMLElement;
 let countriesList: HTMLElement;
-let regionFilter: HTMLSelectElement;
+let regionToggle: HTMLButtonElement;
+let regionMenu: HTMLElement;
+let activeRegionBadge: HTMLElement;
+let activeRegionLabel: HTMLElement;
 
 /**
  * Inicializa las referencias a los elementos del DOM.
@@ -84,8 +87,11 @@ function initializeElements(): void {
   emptyState = getRequiredElement<HTMLElement>('#emptyState');
   noResultsState = getRequiredElement<HTMLElement>('#noResultsState');
   countriesList = getRequiredElement<HTMLElement>('#countriesList');
-  // Referencia al filtro de región agregado en index.html
-  regionFilter = getRequiredElement<HTMLSelectElement>('#regionFilter');
+  // Referencias al nuevo menú flotante de región
+  regionToggle = getRequiredElement<HTMLButtonElement>('#regionToggle');
+  regionMenu = getRequiredElement<HTMLElement>('#regionMenu');
+  activeRegionBadge = getRequiredElement<HTMLElement>('#activeRegionBadge');
+  activeRegionLabel = getRequiredElement<HTMLElement>('#activeRegionLabel');
 }
 
 // =============================================================================
@@ -117,6 +123,19 @@ function hideAllStates(): void {
 function filterByRegion(countries: Country[]): Country[] {
   if (!currentRegion) return countries;
   return countries.filter((country) => country.region === currentRegion);
+}
+
+/**
+ * Actualiza el badge que muestra la región activa debajo del buscador.
+ * Si no hay región seleccionada, lo oculta.
+ */
+function updateRegionBadge(label: string): void {
+  if (!currentRegion) {
+    hideElement(activeRegionBadge);
+  } else {
+    activeRegionLabel.textContent = label;
+    showElement(activeRegionBadge);
+  }
 }
 
 /**
@@ -249,11 +268,23 @@ async function handleSearch(): Promise<void> {
 }
 
 /**
- * Maneja el cambio de región en el filtro desplegable.
- * Actualiza la región actual y re-renderiza sin nueva petición a la API.
+ * Abre o cierra el menú flotante de regiones.
  */
-function handleRegionChange(): void {
-  currentRegion = regionFilter.value;
+function toggleRegionMenu(): void {
+  regionMenu.classList.toggle('hidden');
+}
+
+/**
+ * Maneja la selección de una región desde el menú flotante.
+ * Actualiza la región actual, cierra el menú y re-renderiza.
+ *
+ * @param region - Valor de la región seleccionada
+ * @param label - Texto visible de la región seleccionada
+ */
+function handleRegionSelect(region: string, label: string): void {
+  currentRegion = region;
+  hideElement(regionMenu);
+  updateRegionBadge(label);
   // Si hay resultados cargados, los re-filtramos sin llamar a la API
   if (currentState.status === 'success') {
     render(currentState);
@@ -317,8 +348,26 @@ function setupEventListeners(): void {
   // Botón de reintentar
   retryButton.addEventListener('click', handleRetry);
 
-  // Filtro de región: re-filtra los resultados actuales al cambiar
-  regionFilter.addEventListener('change', handleRegionChange);
+  // Triángulo: abre/cierra el menú flotante de regiones
+  regionToggle.addEventListener('click', toggleRegionMenu);
+
+  // Opciones del menú flotante de regiones
+  const regionOptions = document.querySelectorAll<HTMLButtonElement>('.region-option');
+  regionOptions.forEach((option) => {
+    option.addEventListener('click', () => {
+      const region = option.dataset['region'] ?? '';
+      const label = option.textContent ?? '';
+      handleRegionSelect(region, label);
+    });
+  });
+
+  // Cerrar el menú si se hace click fuera de él
+  document.addEventListener('click', (event) => {
+    const target = event.target as Node;
+    if (!regionMenu.contains(target) && !regionToggle.contains(target)) {
+      hideElement(regionMenu);
+    }
+  });
 }
 
 /**
