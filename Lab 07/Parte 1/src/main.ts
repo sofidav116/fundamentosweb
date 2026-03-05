@@ -49,6 +49,9 @@ let currentState: UiState = { status: 'idle' };
 /** Última búsqueda realizada (para evitar búsquedas duplicadas) */
 let lastSearchQuery = '';
 
+/** Región seleccionada actualmente en el filtro */
+let currentRegion = '';
+
 // =============================================================================
 // REFERENCIAS A ELEMENTOS DEL DOM
 // =============================================================================
@@ -65,6 +68,7 @@ let errorMessage: HTMLElement;
 let emptyState: HTMLElement;
 let noResultsState: HTMLElement;
 let countriesList: HTMLElement;
+let regionFilter: HTMLSelectElement;
 
 /**
  * Inicializa las referencias a los elementos del DOM.
@@ -80,6 +84,8 @@ function initializeElements(): void {
   emptyState = getRequiredElement<HTMLElement>('#emptyState');
   noResultsState = getRequiredElement<HTMLElement>('#noResultsState');
   countriesList = getRequiredElement<HTMLElement>('#countriesList');
+  // Referencia al filtro de región agregado en index.html
+  regionFilter = getRequiredElement<HTMLSelectElement>('#regionFilter');
 }
 
 // =============================================================================
@@ -99,6 +105,18 @@ function hideAllStates(): void {
   hideElement(emptyState);
   hideElement(noResultsState);
   hideElement(countriesList);
+}
+
+/**
+ * Filtra la lista de países por la región seleccionada.
+ * Si no hay región seleccionada, devuelve todos los países.
+ *
+ * @param countries - Lista de países a filtrar
+ * @returns Lista filtrada por región
+ */
+function filterByRegion(countries: Country[]): Country[] {
+  if (!currentRegion) return countries;
+  return countries.filter((country) => country.region === currentRegion);
 }
 
 /**
@@ -132,15 +150,17 @@ function render(state: UiState): void {
       showElement(loadingState);
       break;
 
-    case 'success':
-      // Búsqueda exitosa con resultados
-      if (state.data.length === 0) {
+    case 'success': {
+      // Aplicamos el filtro de región antes de renderizar
+      const filtered = filterByRegion(state.data);
+      if (filtered.length === 0) {
         showElement(noResultsState);
       } else {
         showElement(countriesList);
-        renderCountryList(state.data, countriesList, handleCountryClick);
+        renderCountryList(filtered, countriesList, handleCountryClick);
       }
       break;
+    }
 
     case 'error':
       // Error en la búsqueda
@@ -186,8 +206,9 @@ async function handleSearch(): Promise<void> {
     return;
   }
 
-  // Evitamos búsquedas duplicadas
+  // Evitamos búsquedas duplicadas (pero re-renderizamos si cambió la región)
   if (query === lastSearchQuery && currentState.status === 'success') {
+    render(currentState);
     return;
   }
 
@@ -224,6 +245,18 @@ async function handleSearch(): Promise<void> {
 
     // Log para debugging (en producción usaríamos un servicio de logging)
     console.error('Error en búsqueda:', error);
+  }
+}
+
+/**
+ * Maneja el cambio de región en el filtro desplegable.
+ * Actualiza la región actual y re-renderiza sin nueva petición a la API.
+ */
+function handleRegionChange(): void {
+  currentRegion = regionFilter.value;
+  // Si hay resultados cargados, los re-filtramos sin llamar a la API
+  if (currentState.status === 'success') {
+    render(currentState);
   }
 }
 
@@ -283,6 +316,9 @@ function setupEventListeners(): void {
 
   // Botón de reintentar
   retryButton.addEventListener('click', handleRetry);
+
+  // Filtro de región: re-filtra los resultados actuales al cambiar
+  regionFilter.addEventListener('change', handleRegionChange);
 }
 
 /**
