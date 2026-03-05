@@ -35,6 +35,7 @@ import { searchCountries, ApiError } from './services/countryApi';
 import { renderCountryList } from './components/CountryCard';
 import { openModal } from './components/CountryModal';
 import { getRequiredElement, showElement, hideElement, onDOMReady, debounce } from './utils/dom';
+import { getFavorites, clearFavorites, isFavorite } from './utils/storage';
 
 // =============================================================================
 // ESTADO DE LA APLICACIÓN
@@ -51,6 +52,9 @@ let lastSearchQuery = '';
 
 /** Región seleccionada actualmente en el filtro */
 let currentRegion = '';
+
+/** Si está activo el filtro de solo favoritos */
+let showOnlyFavorites = false;
 
 // =============================================================================
 // REFERENCIAS A ELEMENTOS DEL DOM
@@ -72,6 +76,8 @@ let regionToggle: HTMLButtonElement;
 let regionMenu: HTMLElement;
 let activeRegionBadge: HTMLElement;
 let activeRegionLabel: HTMLElement;
+let favoritesToggle: HTMLInputElement;
+let clearFavoritesBtn: HTMLButtonElement;
 
 /**
  * Inicializa las referencias a los elementos del DOM.
@@ -87,11 +93,14 @@ function initializeElements(): void {
   emptyState = getRequiredElement<HTMLElement>('#emptyState');
   noResultsState = getRequiredElement<HTMLElement>('#noResultsState');
   countriesList = getRequiredElement<HTMLElement>('#countriesList');
-  // Referencias al nuevo menú flotante de región
+  // Referencias al menú flotante de región
   regionToggle = getRequiredElement<HTMLButtonElement>('#regionToggle');
   regionMenu = getRequiredElement<HTMLElement>('#regionMenu');
   activeRegionBadge = getRequiredElement<HTMLElement>('#activeRegionBadge');
   activeRegionLabel = getRequiredElement<HTMLElement>('#activeRegionLabel');
+  // Referencias a los controles de favoritos
+  favoritesToggle = getRequiredElement<HTMLInputElement>('#favoritesToggle');
+  clearFavoritesBtn = getRequiredElement<HTMLButtonElement>('#clearFavoritesBtn');
 }
 
 // =============================================================================
@@ -123,6 +132,17 @@ function hideAllStates(): void {
 function filterByRegion(countries: Country[]): Country[] {
   if (!currentRegion) return countries;
   return countries.filter((country) => country.region === currentRegion);
+}
+
+/**
+ * Filtra la lista de países mostrando solo los favoritos si el toggle está activo.
+ *
+ * @param countries - Lista de países a filtrar
+ * @returns Lista filtrada por favoritos
+ */
+function filterByFavorites(countries: Country[]): Country[] {
+  if (!showOnlyFavorites) return countries;
+  return countries.filter((country) => isFavorite(country.cca3));
 }
 
 /**
@@ -170,8 +190,8 @@ function render(state: UiState): void {
       break;
 
     case 'success': {
-      // Aplicamos el filtro de región antes de renderizar
-      const filtered = filterByRegion(state.data);
+      // Aplicamos filtros de región y favoritos antes de renderizar
+      const filtered = filterByFavorites(filterByRegion(state.data));
       if (filtered.length === 0) {
         showElement(noResultsState);
       } else {
@@ -292,6 +312,37 @@ function handleRegionSelect(region: string, label: string): void {
 }
 
 /**
+ * Activa o desactiva el filtro de solo favoritos.
+ * Re-renderiza los resultados actuales con el nuevo filtro.
+ */
+function handleFavoritesToggle(): void {
+  showOnlyFavorites = favoritesToggle.checked;
+  // Actualizamos la animación visual del toggle
+  const thumb = document.getElementById('favoritesThumb');
+  const track = document.getElementById('favoritesTrack');
+  if (favoritesToggle.checked) {
+    thumb?.style.setProperty('transform', 'translateX(20px)');
+    track?.style.setProperty('background-color', '#ef4444');
+  } else {
+    thumb?.style.setProperty('transform', 'translateX(0)');
+    track?.style.setProperty('background-color', '');
+  }
+  if (currentState.status === 'success') {
+    render(currentState);
+  }
+}
+
+/**
+ * Borra todos los favoritos guardados y re-renderiza.
+ */
+function handleClearFavorites(): void {
+  clearFavorites();
+  if (currentState.status === 'success') {
+    render(currentState);
+  }
+}
+
+/**
  * Maneja el click en una tarjeta de país.
  * Abre el modal con los detalles del país.
  *
@@ -368,6 +419,12 @@ function setupEventListeners(): void {
       hideElement(regionMenu);
     }
   });
+
+  // Interruptor de solo favoritos (lógica + animación unificadas)
+  favoritesToggle.addEventListener('change', handleFavoritesToggle);
+
+  // Botón para limpiar todos los favoritos
+  clearFavoritesBtn.addEventListener('click', handleClearFavorites);
 }
 
 /**
@@ -392,6 +449,7 @@ function initializeApp(): void {
     searchInput.focus();
 
     console.log('Country Explorer inicializado correctamente');
+    console.log(`Favoritos guardados: ${getFavorites().length}`);
   } catch (error) {
     console.error('Error al inicializar la aplicación:', error);
   }
