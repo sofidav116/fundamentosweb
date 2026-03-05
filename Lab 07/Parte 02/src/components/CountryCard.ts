@@ -15,6 +15,7 @@
 import type { Country } from '../types/country';
 import { formatNumber, formatCapitals } from '../utils/format';
 import { createElement } from '../utils/dom';
+import { isFavorite, toggleFavorite } from '../utils/storage';
 
 /**
  * Crea una tarjeta de país para mostrar en la lista.
@@ -50,6 +51,9 @@ export function createCountryCard(
   card.setAttribute('tabindex', '0');
   card.setAttribute('aria-label', `Ver detalles de ${country.name.common}`);
 
+  // Verificamos si este país ya es favorito al momento de renderizar
+  const favorite = isFavorite(country.cca3);
+
   // =========================================================================
   // CONSTRUCCIÓN DEL HTML
   // =========================================================================
@@ -69,6 +73,23 @@ export function createCountryCard(
       <span class="absolute top-3 right-3 px-3 py-1 bg-slate-900/80 text-slate-200 text-xs font-medium rounded-full backdrop-blur-sm">
         ${country.region}
       </span>
+
+      <!-- Botón de favorito (corazón) -->
+      <button
+        class="favorite-btn absolute top-3 left-3 p-2 rounded-full bg-slate-900/80 backdrop-blur-sm transition-colors hover:bg-slate-700"
+        aria-label="${favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}"
+        data-cca3="${country.cca3}"
+      >
+        ${
+          favorite
+            ? `<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>`
+            : `<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>`
+        }
+      </button>
     </div>
 
     <div class="p-5">
@@ -121,7 +142,26 @@ export function createCountryCard(
   // teclado (Enter/Space) para accesibilidad.
   // =========================================================================
 
-  // Manejador de click
+  // Manejador del botón de favorito (corazón)
+  const favBtn = card.querySelector<HTMLButtonElement>('.favorite-btn');
+  favBtn?.addEventListener('click', (event) => {
+    // Detenemos el click para que no abra el modal
+    event.stopPropagation();
+    const nowFavorite = toggleFavorite(country.cca3);
+
+    // Actualizamos el ícono según el nuevo estado
+    favBtn.innerHTML = nowFavorite
+      ? `<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>`
+      : `<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>`;
+
+    favBtn.setAttribute('aria-label', nowFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos');
+  });
+
+  // Manejador de click en la tarjeta (abre modal)
   card.addEventListener('click', () => {
     onClick(country);
   });
