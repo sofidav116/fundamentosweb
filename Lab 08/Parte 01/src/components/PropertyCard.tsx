@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import type { Property } from '@/types/property';
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from '@/types/property';
 import { formatPrice, formatArea, truncateText } from '@/lib/utils';
+import { CompareButton } from '@/components/CompareButton';
 
 /**
  * Props del componente PropertyCard.
@@ -35,7 +36,7 @@ interface PropertyCardProps {
  * - Título y ubicación
  * - Características (habitaciones, baños, área)
  * - Precio
- * - Acciones (ver, editar, eliminar)
+ * - Acciones (ver, comparar, eliminar)
  *
  * @param property - Datos de la propiedad
  * @param onDelete - Callback opcional para eliminar
@@ -121,6 +122,9 @@ export function PropertyCard({ property, onDelete }: PropertyCardProps): React.R
         <Button asChild className="flex-1">
           <Link to={`/property/${property.id}`}>Ver detalles</Link>
         </Button>
+
+        {/* Botón comparar */}
+        <CompareButton propertyId={property.id} />
 
         {/* Botón eliminar (si se proporciona callback) */}
         {onDelete && (
