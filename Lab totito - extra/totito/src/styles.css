@@ -1,92 +1,110 @@
-/* 🌸 Fuente futurista (import opcional desde Google Fonts) */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Quicksand:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Quicksand:wght@400;600&display=swap');
 
 body {
   font-family: 'Quicksand', sans-serif;
   background: linear-gradient(135deg, #ffd6ec, #ffe6f7);
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
   height: 100vh;
 }
 
-/* 🌸 Contenedor principal */
+/* TÍTULO PRINCIPAL */
+.main-title {
+  margin-top: 30px;
+  margin-bottom: 10px;
+
+  font-family: 'Orbitron', sans-serif;
+  font-size: 42px;
+  letter-spacing: 6px;
+
+  color: #ff4da6;
+
+  text-shadow:
+    0 0 10px rgba(255, 105, 180, 0.6),
+    0 0 20px rgba(255, 105, 180, 0.3);
+}
+
+/* CONTENEDOR */
 .game {
   display: flex;
   gap: 40px;
-  padding: 30px;
-  background: rgba(255, 255, 255, 0.4);
+  padding: 40px;
+
+  background: rgba(255, 255, 255, 0.35);
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(255, 105, 180, 0.2);
-  backdrop-filter: blur(10px);
+
+  box-shadow: 0 15px 40px rgba(255, 105, 180, 0.2);
+  backdrop-filter: blur(12px);
+
+  position: relative;
 }
 
-/* ✨ Texto futurista */
-h2 {
+/* STATUS */
+.status {
   font-family: 'Orbitron', sans-serif;
   color: #ff4da6;
   text-align: center;
+  margin-bottom: 10px;
 }
 
-/* 🎀 Filas */
+/* TABLERO */
 .board-row {
   display: flex;
 }
 
-/* 💖 Cuadros */
 .square {
   width: 70px;
   height: 70px;
+
   font-size: 26px;
   font-weight: bold;
-  text-align: center;
+
   border: none;
-  margin: 4px;
-  border-radius: 15px;
+  margin: 5px;
+  border-radius: 16px;
+
   background: linear-gradient(145deg, #ffb6d9, #ffcce6);
-  color: #fff;
+  color: white;
+
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 10px rgba(255, 105, 180, 0.3);
+  transition: all 0.25s ease;
+
+  box-shadow: 0 6px 15px rgba(255, 105, 180, 0.3);
 }
 
-/* ✨ Hover */
 .square:hover {
-  transform: scale(1.1);
+  transform: scale(1.12);
   background: linear-gradient(145deg, #ff99cc, #ff66b2);
 }
 
-/* 🌸 Botón de nueva partida (pequeño y cute) */
-button {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 12px;
-  padding: 6px 12px;
-  margin-bottom: 10px;
+/* BOTÓN */
+.reset-btn {
+  position: absolute;
+  top: 15px;
+  left: 20px;
+
+  font-size: 13px;
+  padding: 6px 14px;
+
   border: none;
   border-radius: 12px;
+
   background: linear-gradient(145deg, #ff99cc, #ff66b2);
   color: white;
+
   cursor: pointer;
-  box-shadow: 0 3px 8px rgba(255, 105, 180, 0.4);
-  transition: all 0.2s ease;
+
+  box-shadow: 0 4px 10px rgba(255, 105, 180, 0.4);
+  transition: 0.25s;
 }
 
-/* ✨ Hover botón */
-button:hover {
+.reset-btn:hover {
   transform: scale(1.1);
-  background: linear-gradient(145deg, #ff66b2, #ff3385);
 }
 
-/* 📜 Historial */
-.game-info {
-  margin-left: 10px;
-}
-
+/* HISTORIAL */
 .game-info h3 {
-  color: #ff4da6;
   font-family: 'Orbitron', sans-serif;
-}
-
-ol {
-  padding-left: 20px;
+  color: #ff4da6;
 }

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import './styles.css';
 
-// 🔲 Casilla
 function Square({ value, onSquareClick }) {
   return (
     <button className="square" onClick={onSquareClick}>
@@ -10,7 +9,6 @@ function Square({ value, onSquareClick }) {
   );
 }
 
-// 🎯 Tablero
 function Board({ xIsNext, squares, onPlay }) {
 
   function handleClick(i) {
@@ -29,13 +27,15 @@ function Board({ xIsNext, squares, onPlay }) {
   let status;
   if (winner) {
     status = 'Ganador: ' + winner;
+  } else if (squares.every(square => square !== null)) {
+    status = 'Empate';
   } else {
     status = 'Turno: ' + (xIsNext ? 'X' : 'O');
   }
 
   return (
     <>
-      <h2>{status}</h2>
+      <h2 className="status">{status}</h2>
 
       <div className="board-row">
         <Square value={squares[0]} onSquareClick={() => handleClick(0)} />
@@ -58,7 +58,6 @@ function Board({ xIsNext, squares, onPlay }) {
   );
 }
 
-// 🎮 Juego principal
 export default function Game() {
   const [history, setHistory] = useState([Array(9).fill(null)]);
   const [currentMove, setCurrentMove] = useState(0);
@@ -80,20 +79,15 @@ export default function Game() {
     setCurrentMove(nextMove);
   }
 
-  // 🔄 Reiniciar juego
   function restartGame() {
     setHistory([Array(9).fill(null)]);
     setCurrentMove(0);
   }
 
   const moves = history.map((squares, move) => {
-    let description;
-
-    if (move > 0) {
-      description = 'Ir a movimiento #' + move;
-    } else {
-      description = 'Ir al inicio';
-    }
+    let description = move > 0
+      ? 'Movimiento #' + move
+      : 'Inicio';
 
     return (
       <li key={move}>
@@ -105,40 +99,39 @@ export default function Game() {
   });
 
   return (
-    <div className="game">
+    <>
+      {/* 🔥 TÍTULO PRINCIPAL */}
+      <h1 className="main-title">TOTITO</h1>
 
-      {/* 🔥 BOTÓN NUEVO */}
-      <button onClick={restartGame}>
-        🔄 Nueva partida
-      </button>
+      <div className="game">
 
-      <div className="game-board">
-        <Board
-          xIsNext={xIsNext}
-          squares={currentSquares}
-          onPlay={handlePlay}
-        />
+        <button className="reset-btn" onClick={restartGame}>
+          Nueva partida
+        </button>
+
+        <div className="game-board">
+          <Board
+            xIsNext={xIsNext}
+            squares={currentSquares}
+            onPlay={handlePlay}
+          />
+        </div>
+
+        <div className="game-info">
+          <h3>Historial</h3>
+          <ol>{moves}</ol>
+        </div>
+
       </div>
-
-      <div className="game-info">
-        <h3>Historial</h3>
-        <ol>{moves}</ol>
-      </div>
-    </div>
+    </>
   );
 }
 
-// 🏆 Ganador
 function calculateWinner(squares) {
   const lines = [
-    [0,1,2],
-    [3,4,5],
-    [6,7,8],
-    [0,3,6],
-    [1,4,7],
-    [2,5,8],
-    [0,4,8],
-    [2,4,6],
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6],
   ];
 
   for (let i = 0; i < lines.length; i++) {
