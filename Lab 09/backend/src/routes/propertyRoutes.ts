@@ -5,7 +5,7 @@
 //
 // ## Diseño RESTful
 // Seguimos convenciones REST para los endpoints:
-// - GET /api/properties - Listar todas
+// - GET /api/properties - Listar todas (con paginación)
 // - GET /api/properties/:id - Obtener una
 // - POST /api/properties - Crear nueva
 // - PUT /api/properties/:id - Actualizar
@@ -33,15 +33,30 @@ const router = Router();
 
 /**
  * GET /api/properties
- * Lista todas las propiedades con filtros opcionales.
+ * Lista propiedades con filtros opcionales y paginación.
  *
- * Query params:
+ * Query params de paginación:
+ * - page:  Número de página (entero >= 1, default: 1)
+ * - limit: Registros por página (entero >= 1, default: 10)
+ *
+ * Query params de filtro:
  * - search: Búsqueda por texto
  * - propertyType: Filtro por tipo de propiedad
  * - operationType: Filtro por tipo de operación
  * - minPrice, maxPrice: Rango de precios
  * - minBedrooms: Habitaciones mínimas
  * - city: Filtro por ciudad
+ *
+ * Respuesta:
+ * {
+ *   success: true,
+ *   data: Property[],
+ *   meta: { total, page, limit, pages }
+ * }
+ *
+ * Ejemplos:
+ *   GET /api/properties?page=1&limit=10
+ *   GET /api/properties?page=2&limit=5&city=Madrid
  */
 router.get('/', (req, res) => {
   void getAllProperties(req, res);
