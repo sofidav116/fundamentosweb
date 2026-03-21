@@ -19,7 +19,7 @@
 //
 // Express + Prisma:
 //   class PropertyRepository {
-//       async findAll(filters): Promise<Property[]>
+//       async findAll(filters, pagination): Promise<{ data: Property[]; total: number }>
 //       async create(data): Promise<Property>
 //   }
 // =============================================================================
@@ -30,9 +30,6 @@ import type { Property, PropertyFilters, CreatePropertyInput, UpdatePropertyInpu
 
 // =============================================================================
 // CLIENTE PRISMA (Singleton con Adapter para Prisma 7)
-// =============================================================================
-// En Prisma 7, se requiere un driver adapter para conectar a la base de datos.
-// Usamos @prisma/adapter-better-sqlite3 para SQLite.
 // =============================================================================
 
 const adapter = new PrismaBetterSqlite3({ url: 'file:./prisma/dev.db' });
@@ -58,6 +55,16 @@ interface PrismaProperty {
   images: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+interface PaginationOptions {
+  page: number;
+  limit: number;
+}
+
+interface PaginatedResult<T> {
+  data: T[];
+  total: number;
 }
 
 // =============================================================================
@@ -111,25 +118,38 @@ function toPrismaData(data: CreatePropertyInput | UpdatePropertyInput): Record<s
 // REPOSITORIO
 // =============================================================================
 
-/**
- * Repositorio de propiedades.
- *
- * Centraliza todas las operaciones de base de datos relacionadas con propiedades.
- * El controlador solo llama métodos del repositorio, no interactúa con Prisma directamente.
- */
 export const propertyRepository = {
   /**
-   * Busca todas las propiedades con filtros opcionales.
+   * Busca propiedades con filtros opcionales y paginación.
+   *
+   * Devuelve { data, total } para que el controlador calcule los metadatos.
+   * Se usan dos queries en paralelo con $transaction:
+   *   1. findMany con skip/take para la página actual
+   *   2. count para el total de registros coincidentes
    */
-  async findAll(filters?: PropertyFilters): Promise<Property[]> {
+  async findAll(
+    filters?: PropertyFilters,
+    pagination: PaginationOptions = { page: 1, limit: 10 },
+  ): Promise<PaginatedResult<Property>> {
     const where = buildWhereClause(filters);
+    const skip = (pagination.page - 1) * pagination.limit;
+    const take = pagination.limit;
 
-    const properties = await prisma.property.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    // Ejecutamos ambas queries en paralelo para mayor eficiencia
+    const [properties, total] = await prisma.$transaction([
+      prisma.property.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      prisma.property.count({ where }),
+    ]);
 
-    return properties.map(toProperty);
+    return {
+      data: properties.map(toProperty),
+      total,
+    };
   },
 
   /**
@@ -160,7 +180,6 @@ export const propertyRepository = {
    * Actualiza una propiedad existente.
    */
   async update(id: string, data: UpdatePropertyInput): Promise<Property | null> {
-    // Verificamos que existe
     const existing = await prisma.property.findUnique({ where: { id } });
     if (!existing) return null;
 
@@ -235,7 +254,6 @@ function buildWhereClause(filters?: PropertyFilters): Record<string, unknown> {
     where.city = { contains: filters.city };
   }
 
-  // Búsqueda por texto en múltiples campos
   if (filters.search) {
     where.OR = [
       { title: { contains: filters.search } },
@@ -248,5 +266,4 @@ function buildWhereClause(filters?: PropertyFilters): Record<string, unknown> {
   return where;
 }
 
-// Export por defecto para compatibilidad
 export default propertyRepository;
