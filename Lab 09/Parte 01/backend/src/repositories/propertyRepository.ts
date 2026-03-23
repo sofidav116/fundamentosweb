@@ -31,8 +31,11 @@ import type { Property, PropertyFilters, CreatePropertyInput, UpdatePropertyInpu
 // =============================================================================
 // CLIENTE PRISMA (Singleton con Adapter para Prisma 7)
 // =============================================================================
+// Prisma 7 requiere un driver adapter para SQLite.
+// La URL viene de la variable de entorno o del valor por defecto.
+// =============================================================================
 
-const adapter = new PrismaBetterSqlite3({ url: 'file:./prisma/dev.db' });
+const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? 'file:./prisma/dev.db' });
 const prisma = new PrismaClient({ adapter });
 
 // =============================================================================
@@ -71,13 +74,6 @@ interface PaginatedResult<T> {
 // TRANSFORMADORES
 // =============================================================================
 
-/**
- * Transforma un registro de Prisma al tipo Property de la API.
- *
- * ## ¿Por qué transformar?
- * Prisma almacena arrays como JSON strings en SQLite.
- * La API debe devolver arrays JavaScript.
- */
 function toProperty(dbProperty: PrismaProperty): Property {
   return {
     id: dbProperty.id,
@@ -98,9 +94,6 @@ function toProperty(dbProperty: PrismaProperty): Property {
   };
 }
 
-/**
- * Prepara datos para Prisma (arrays a JSON strings).
- */
 function toPrismaData(data: CreatePropertyInput | UpdatePropertyInput): Record<string, unknown> {
   const result: Record<string, unknown> = { ...data };
 
@@ -119,14 +112,6 @@ function toPrismaData(data: CreatePropertyInput | UpdatePropertyInput): Record<s
 // =============================================================================
 
 export const propertyRepository = {
-  /**
-   * Busca propiedades con filtros opcionales y paginación.
-   *
-   * Devuelve { data, total } para que el controlador calcule los metadatos.
-   * Se usan dos queries en paralelo con $transaction:
-   *   1. findMany con skip/take para la página actual
-   *   2. count para el total de registros coincidentes
-   */
   async findAll(
     filters?: PropertyFilters,
     pagination: PaginationOptions = { page: 1, limit: 10 },
@@ -135,7 +120,6 @@ export const propertyRepository = {
     const skip = (pagination.page - 1) * pagination.limit;
     const take = pagination.limit;
 
-    // Ejecutamos ambas queries en paralelo para mayor eficiencia
     const [properties, total] = await prisma.$transaction([
       prisma.property.findMany({
         where,
@@ -152,50 +136,33 @@ export const propertyRepository = {
     };
   },
 
-  /**
-   * Busca una propiedad por ID.
-   */
   async findById(id: string): Promise<Property | null> {
     const property = await prisma.property.findUnique({
       where: { id },
     });
-
     return property ? toProperty(property) : null;
   },
 
-  /**
-   * Crea una nueva propiedad.
-   */
   async create(data: CreatePropertyInput): Promise<Property> {
     const prismaData = toPrismaData(data);
-
     const property = await prisma.property.create({
       data: prismaData as Parameters<typeof prisma.property.create>[0]['data'],
     });
-
     return toProperty(property);
   },
 
-  /**
-   * Actualiza una propiedad existente.
-   */
   async update(id: string, data: UpdatePropertyInput): Promise<Property | null> {
     const existing = await prisma.property.findUnique({ where: { id } });
     if (!existing) return null;
 
     const prismaData = toPrismaData(data);
-
     const property = await prisma.property.update({
       where: { id },
       data: prismaData,
     });
-
     return toProperty(property);
   },
 
-  /**
-   * Elimina una propiedad.
-   */
   async delete(id: string): Promise<boolean> {
     const existing = await prisma.property.findUnique({ where: { id } });
     if (!existing) return false;
@@ -204,9 +171,6 @@ export const propertyRepository = {
     return true;
   },
 
-  /**
-   * Verifica si una propiedad existe.
-   */
   async exists(id: string): Promise<boolean> {
     const property = await prisma.property.findUnique({
       where: { id },
@@ -220,39 +184,22 @@ export const propertyRepository = {
 // HELPERS
 // =============================================================================
 
-/**
- * Construye la cláusula WHERE de Prisma a partir de los filtros.
- */
 function buildWhereClause(filters?: PropertyFilters): Record<string, unknown> {
   if (!filters) return {};
 
   const where: Record<string, unknown> = {};
 
-  if (filters.propertyType) {
-    where.propertyType = filters.propertyType;
-  }
-
-  if (filters.operationType) {
-    where.operationType = filters.operationType;
-  }
+  if (filters.propertyType) where.propertyType = filters.propertyType;
+  if (filters.operationType) where.operationType = filters.operationType;
 
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
     where.price = {};
-    if (filters.minPrice !== undefined) {
-      (where.price as Record<string, number>).gte = filters.minPrice;
-    }
-    if (filters.maxPrice !== undefined) {
-      (where.price as Record<string, number>).lte = filters.maxPrice;
-    }
+    if (filters.minPrice !== undefined) (where.price as Record<string, number>).gte = filters.minPrice;
+    if (filters.maxPrice !== undefined) (where.price as Record<string, number>).lte = filters.maxPrice;
   }
 
-  if (filters.minBedrooms !== undefined) {
-    where.bedrooms = { gte: filters.minBedrooms };
-  }
-
-  if (filters.city) {
-    where.city = { contains: filters.city };
-  }
+  if (filters.minBedrooms !== undefined) where.bedrooms = { gte: filters.minBedrooms };
+  if (filters.city) where.city = { contains: filters.city };
 
   if (filters.search) {
     where.OR = [
