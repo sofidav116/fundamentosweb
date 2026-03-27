@@ -18,10 +18,10 @@
 
 'use client';
 
-import { useOptimistic, useTransition } from 'react';
+import { useOptimistic, useTransition, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { registerForEventAction } from '@/actions/eventActions';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RegisterButtonProps {
@@ -37,7 +37,8 @@ interface RegisterButtonProps {
  * 1. Al hacer clic, `addOptimistic` actualiza spots inmediatamente (-1)
  * 2. `startTransition` inicia la Server Action
  * 3. Mientras pending=true, mostramos spinner
- * 4. Si falla, React revierte automáticamente
+ * 4. Si falla, React revierte automáticamente y mostramos error
+ * 5. Si éxito, mostramos mensaje de confirmación
  */
 export function RegisterButton({
   eventId,
@@ -49,6 +50,17 @@ export function RegisterButton({
    * isPending indica si hay una transición en progreso.
    */
   const [isPending, startTransition] = useTransition();
+
+  /**
+   * Estado para el feedback de éxito/error tras completar la acción.
+   * null = sin feedback, 'success' = registro exitoso, 'error' = fallo
+   */
+  const [feedback, setFeedback] = useState<'success' | 'error' | null>(null);
+
+  /**
+   * Mensaje de error del servidor para mostrarlo al usuario.
+   */
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   /**
    * useOptimistic crea un estado optimista.
@@ -63,13 +75,17 @@ export function RegisterButton({
   );
 
   // Estado derivado
-  const showRegistered = optimisticSpots < availableSpots;
-  const canRegister = isAvailable && optimisticSpots > 0 && !showRegistered;
+  const showRegistered = feedback === 'success';
+  const canRegister = isAvailable && optimisticSpots > 0 && !showRegistered && feedback !== 'success';
 
   /**
    * Handler del registro.
    */
   async function handleRegister(): Promise<void> {
+    // Limpiamos feedback previo
+    setFeedback(null);
+    setErrorMessage('');
+
     // 1. Actualización optimista inmediata
     addOptimistic('register');
 
@@ -78,46 +94,73 @@ export function RegisterButton({
       const result = await registerForEventAction(eventId);
 
       if (!result.success) {
-        // Si falla, podríamos mostrar un toast de error
-        // El estado optimista se revierte automáticamente
-        console.error('Error al registrar:', result.message);
+        // El estado optimista se revierte automáticamente al salir de la transición
+        setFeedback('error');
+        setErrorMessage(result.message ?? 'Error al registrar. Inténtalo de nuevo.');
+      } else {
+        // Confirmamos el éxito
+        setFeedback('success');
       }
     });
   }
 
-  // Si ya se registró (optimísticamente)
+  // Si ya se registró exitosamente (confirmado por el servidor)
   if (showRegistered) {
     return (
-      <Button variant="secondary" disabled className="w-full gap-2">
-        <CheckCircle className="h-4 w-4" />
-        ¡Registrado!
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button variant="secondary" disabled className="w-full gap-2">
+          <CheckCircle className="h-4 w-4 text-green-500" />
+          ¡Registrado!
+        </Button>
+        <p className="text-center text-sm text-green-600">
+          ¡Te has registrado correctamente!
+        </p>
+      </div>
     );
   }
 
-  // Si no hay plazas
-  if (!canRegister) {
+  // Si no hay plazas o no está disponible
+  if (!canRegister && !isPending) {
     return (
-      <Button variant="secondary" disabled className="w-full">
-        {optimisticSpots === 0 ? 'Evento Agotado' : 'No disponible'}
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button variant="secondary" disabled className="w-full">
+          {optimisticSpots === 0 ? 'Evento Agotado' : 'No disponible'}
+        </Button>
+        {/* Mensaje de error si el servidor rechazó el registro */}
+        {feedback === 'error' && (
+          <p className="flex items-center justify-center gap-1 text-center text-sm text-red-500">
+            <XCircle className="h-4 w-4" />
+            {errorMessage}
+          </p>
+        )}
+      </div>
     );
   }
 
   return (
-    <Button
-      onClick={handleRegister}
-      disabled={isPending}
-      className={cn('w-full gap-2', isPending && 'cursor-wait')}
-    >
-      {isPending ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Registrando...
-        </>
-      ) : (
-        `Registrarme (${optimisticSpots} plazas)`
+    <div className="flex flex-col gap-2">
+      <Button
+        onClick={handleRegister}
+        disabled={isPending}
+        className={cn('w-full gap-2', isPending && 'cursor-wait')}
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Registrando...
+          </>
+        ) : (
+          `Registrarme (${optimisticSpots} plazas)`
+        )}
+      </Button>
+
+      {/* Mensaje de error si el servidor revirtió el registro */}
+      {feedback === 'error' && (
+        <p className="flex items-center justify-center gap-1 text-center text-sm text-red-500">
+          <XCircle className="h-4 w-4" />
+          {errorMessage}
+        </p>
       )}
-    </Button>
+    </div>
   );
 }
