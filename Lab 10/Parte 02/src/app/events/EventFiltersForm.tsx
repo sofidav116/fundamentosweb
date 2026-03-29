@@ -1,48 +1,49 @@
 // =============================================================================
 // COMPONENTE EVENT FILTERS FORM - Module 4: Event Pass
 // =============================================================================
-// Formulario de filtros mejorado con interactividad.
+// Formulario de filtros con estado en URL.
 //
 // ## Client Component
-// Lo hemos convertido a 'use client' para permitir:
-// 1. Auto-submit al cambiar selectores (UX más fluida)
-// 2. Mantener la URL sincronizada sin recargas completas
-// 3. Búsqueda con debounce para escribir y filtrar automáticamente
+// Usa useRouter + useSearchParams para actualizar la URL sin recarga completa.
+//
+// ## URL-based State
+// Los filtros viven en la URL (?category=music&status=active), lo que permite:
+// - Compartir/bookmarking de filtros activos
+// - Persistencia al refrescar
+// - Navegación con historial del browser
 //
 // ## Progressive Enhancement
-// Aunque usamos JS para mejorar la UX, el formulario sigue usando
-// method="GET" y action="/events", por lo que es robusto y estándar.
+// El formulario usa method="GET" como fallback si JS no está disponible.
 // =============================================================================
 
 'use client';
 
-import { Search } from 'lucide-react';
+import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   EVENT_CATEGORIES,
   CATEGORY_LABELS,
   EVENT_STATUSES,
   STATUS_LABELS,
   type EventCategory,
+  type EventStatus,
 } from '@/types/event';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 interface EventFiltersFormProps {
   currentFilters: {
     search?: string;
     category?: EventCategory;
-    status?: string;
+    status?: EventStatus;
     priceMax?: number;
   };
 }
 
-/**
- * Construye un nuevo URLSearchParams omitiendo claves vacías/undefined
- * para mantener la URL limpia.
- */
+/** Construye un objeto URLSearchParams limpio a partir de los filtros activos */
 function buildParams(filters: {
   search?: string;
   category?: string;
@@ -50,107 +51,99 @@ function buildParams(filters: {
   priceMax?: string;
 }): URLSearchParams {
   const params = new URLSearchParams();
-  if (filters.search)   params.set('search',   filters.search);
+  if (filters.search) params.set('search', filters.search);
   if (filters.category) params.set('category', filters.category);
-  if (filters.status)   params.set('status',   filters.status);
+  if (filters.status) params.set('status', filters.status);
   if (filters.priceMax) params.set('priceMax', filters.priceMax);
   return params;
 }
 
+/** Etiqueta legible para el precio máximo */
+function priceLabel(value?: number): string {
+  if (value === undefined) return '';
+  if (value === 0) return 'Gratis';
+  return `Hasta $${value}`;
+}
+
 /**
  * Formulario de filtros de eventos (Client Component).
+ * Actualiza la URL sin recarga completa usando useRouter.push.
  */
 export function EventFiltersForm({ currentFilters }: EventFiltersFormProps): React.ReactElement {
-  const router       = useRouter();
-  const pathname     = usePathname();
-  const searchParams = useSearchParams(); // lee la URL actual (no los props)
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // ── Estado local ─────────────────────────────────────────────────────────────
+  // Estado local para el input de búsqueda (se debouncea antes de actualizar URL)
   const [searchTerm, setSearchTerm] = useState(currentFilters.search ?? '');
-  const [category,   setCategory]   = useState(currentFilters.category ?? '');
-  const [status,     setStatus]     = useState(currentFilters.status ?? '');
-  const [priceMax,   setPriceMax]   = useState(currentFilters.priceMax?.toString() ?? '');
-
-  // Valor debounced del campo de texto (500 ms)
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  // Evita disparar la navegación en el primer render
+  // Ref para evitar push en el primer render
   const isFirstRender = useRef(true);
 
-  // ── Helper: navega con router.push sin recarga completa ──────────────────────
-  const applyFilters = useCallback(
-    (overrides: { search?: string; category?: string; status?: string; priceMax?: string }) => {
-      const params = buildParams({
-        search: searchTerm,
-        category,
-        status,
-        priceMax,
-        ...overrides, // el campo que acaba de cambiar sobreescribe el estado local
-      });
-      const query = params.toString();
-      // router.push actualiza la URL y re-renderiza el Server Component
-      // { scroll: false } evita que la página salte al inicio
-      router.push(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
+  const hasFilters =
+    currentFilters.search ||
+    currentFilters.category ||
+    currentFilters.priceMax !== undefined ||
+    currentFilters.status;
+
+  /** Navega a /events con los nuevos parámetros, manteniendo los existentes */
+  const updateFilter = useCallback(
+    (key: string, value: string) => {
+      const current = new URLSearchParams(searchParams.toString());
+      if (value) {
+        current.set(key, value);
+      } else {
+        current.delete(key);
+      }
+      router.push(`/events?${current.toString()}`);
     },
-    [router, pathname, searchTerm, category, status, priceMax],
+    [router, searchParams],
   );
 
-  // ── Auto-apply cuando el texto debounced cambia ──────────────────────────────
+  /** Quita un filtro específico de la URL */
+  const removeFilter = useCallback(
+    (key: string) => {
+      const current = new URLSearchParams(searchParams.toString());
+      current.delete(key);
+      router.push(`/events?${current.toString()}`);
+    },
+    [router, searchParams],
+  );
+
+  // Auto-push cuando cambia el debounced search
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
-    applyFilters({ search: debouncedSearch });
-  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+    updateFilter('search', debouncedSearch);
+  }, [debouncedSearch, updateFilter]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    // La navegación la dispara el efecto de debounce
-  };
+  // Chips de filtros activos
+  const activeChips: { key: string; label: string }[] = [
+    ...(currentFilters.search ? [{ key: 'search', label: `"${currentFilters.search}"` }] : []),
+    ...(currentFilters.category
+      ? [{ key: 'category', label: CATEGORY_LABELS[currentFilters.category] }]
+      : []),
+    ...(currentFilters.status
+      ? [{ key: 'status', label: STATUS_LABELS[currentFilters.status] }]
+      : []),
+    ...(currentFilters.priceMax !== undefined
+      ? [{ key: 'priceMax', label: priceLabel(currentFilters.priceMax) }]
+      : []),
+  ];
 
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setCategory(value);
-    applyFilters({ category: value });
-  };
-
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setStatus(value);
-    applyFilters({ status: value });
-  };
-
-  const handlePriceMaxChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setPriceMax(value);
-    applyFilters({ priceMax: value });
-  };
-
-  // Botón "Buscar" explícito (accesibilidad / submit manual)
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    applyFilters({ search: searchTerm });
-  };
-
-  // Limpiar todos los filtros → navega a /events sin query params
-  const handleClear = () => {
-    setSearchTerm('');
-    setCategory('');
-    setStatus('');
-    setPriceMax('');
-    router.push(pathname, { scroll: false });
-  };
-
-  // Hay filtros activos si la URL tiene al menos un param
-  const hasFilters = searchParams.toString().length > 0;
-
-  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4 rounded-lg border bg-card p-4">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Búsqueda */}
+    <div className="space-y-3 rounded-lg border bg-card p-4">
+      {/* Header row */}
+      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <SlidersHorizontal className="h-4 w-4" />
+        Filtros
+      </div>
+
+      {/* Fallback form (funciona sin JS) */}
+      <form method="GET" action="/events" className="space-y-3">
+        {/* Fila de búsqueda */}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -158,21 +151,30 @@ export function EventFiltersForm({ currentFilters }: EventFiltersFormProps): Rea
               name="search"
               placeholder="Buscar eventos..."
               value={searchTerm}
-              onChange={handleSearchChange}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
             />
           </div>
-          <Button type="submit">Buscar</Button>
+          <Button type="submit" variant="secondary">
+            Buscar
+          </Button>
         </div>
 
-        {/* Filtros adicionales */}
-        <div className="flex flex-wrap gap-4">
+        {/* Selectores de filtro */}
+        <div className="flex flex-wrap gap-3">
           {/* Categoría */}
           <select
             name="category"
-            value={category}
-            onChange={handleCategoryChange}
-            className="h-10 w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            value={currentFilters.category ?? ''}
+            onChange={(e) => updateFilter('category', e.target.value)}
+            className={[
+              'h-10 w-[180px] rounded-md border px-3 py-2 text-sm ring-offset-background',
+              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+              'bg-background transition-colors',
+              currentFilters.category
+                ? 'border-primary bg-primary/5 font-medium text-primary'
+                : 'border-input',
+            ].join(' ')}
           >
             <option value="">Todas las categorías</option>
             {EVENT_CATEGORIES.map((cat) => (
@@ -182,17 +184,24 @@ export function EventFiltersForm({ currentFilters }: EventFiltersFormProps): Rea
             ))}
           </select>
 
-          {/* Status */}
+          {/* Estado */}
           <select
             name="status"
-            value={status}
-            onChange={handleStatusChange}
-            className="h-10 w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            value={currentFilters.status ?? ''}
+            onChange={(e) => updateFilter('status', e.target.value)}
+            className={[
+              'h-10 w-[180px] rounded-md border px-3 py-2 text-sm ring-offset-background',
+              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+              'bg-background transition-colors',
+              currentFilters.status
+                ? 'border-primary bg-primary/5 font-medium text-primary'
+                : 'border-input',
+            ].join(' ')}
           >
             <option value="">Todos los estados</option>
-            {EVENT_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
+            {EVENT_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {STATUS_LABELS[status]}
               </option>
             ))}
           </select>
@@ -200,9 +209,16 @@ export function EventFiltersForm({ currentFilters }: EventFiltersFormProps): Rea
           {/* Precio máximo */}
           <select
             name="priceMax"
-            value={priceMax}
-            onChange={handlePriceMaxChange}
-            className="h-10 w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            value={currentFilters.priceMax?.toString() ?? ''}
+            onChange={(e) => updateFilter('priceMax', e.target.value)}
+            className={[
+              'h-10 w-[180px] rounded-md border px-3 py-2 text-sm ring-offset-background',
+              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+              'bg-background transition-colors',
+              currentFilters.priceMax !== undefined
+                ? 'border-primary bg-primary/5 font-medium text-primary'
+                : 'border-input',
+            ].join(' ')}
           >
             <option value="">Cualquier precio</option>
             <option value="0">Gratis</option>
@@ -212,14 +228,38 @@ export function EventFiltersForm({ currentFilters }: EventFiltersFormProps): Rea
             <option value="200">Hasta $200</option>
           </select>
 
-          {/* Botón limpiar — solo visible cuando hay filtros activos en la URL */}
+          {/* Botón limpiar todo */}
           {hasFilters && (
-            <Button type="button" variant="ghost" onClick={handleClear} className="gap-2">
-              Borrar todo
+            <Button
+              type="button"
+              variant="ghost"
+              className="gap-2 text-muted-foreground hover:text-foreground"
+              onClick={() => router.push('/events')}
+            >
+              <X className="h-4 w-4" />
+              Limpiar filtros
             </Button>
           )}
         </div>
       </form>
+
+      {/* Chips de filtros activos */}
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t pt-3">
+          <span className="text-xs text-muted-foreground self-center">Activos:</span>
+          {activeChips.map((chip) => (
+            <Badge
+              key={chip.key}
+              variant="secondary"
+              className="gap-1 pr-1 cursor-pointer hover:bg-destructive/10 hover:text-destructive transition-colors"
+              onClick={() => removeFilter(chip.key)}
+            >
+              {chip.label}
+              <X className="h-3 w-3" />
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

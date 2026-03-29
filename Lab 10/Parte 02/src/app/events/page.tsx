@@ -10,11 +10,16 @@
 // ## Dynamic Rendering
 // Esta página usa dynamic rendering porque depende de searchParams.
 // Next.js detecta esto automáticamente.
+//
+// ## Suspense boundary
+// EventFiltersForm usa useSearchParams(), que requiere un Suspense boundary
+// padre para el streaming de Server Components. Lo envolvemos aquí.
 // =============================================================================
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
+import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { EventList } from '@/components/EventList';
 import { EventFiltersForm } from './EventFiltersForm';
@@ -45,11 +50,18 @@ interface EventsPageProps {
   }>;
 }
 
+/** Skeleton mínimo mientras carga el formulario de filtros */
+function FiltersSkeleton() {
+  return (
+    <div className="h-[88px] animate-pulse rounded-lg border bg-card" />
+  );
+}
+
 /**
  * Página de listado de eventos.
  */
 export default async function EventsPage({ searchParams }: EventsPageProps): Promise<React.ReactElement> {
-  // Await searchParams (Next.js 16+ async searchParams)
+  // Await searchParams (Next.js 15+ async searchParams)
   const params = await searchParams;
 
   // Construimos los filtros desde searchParams
@@ -60,7 +72,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps): Pro
     priceMax: params.priceMax ? Number(params.priceMax) : undefined,
   };
 
-  // Fetch de eventos con filtros
+  // Fetch de eventos con filtros (server-side)
   const events = await getEvents(filters);
 
   return (
@@ -81,12 +93,14 @@ export default async function EventsPage({ searchParams }: EventsPageProps): Pro
         </Button>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros — envueltos en Suspense porque EventFiltersForm usa useSearchParams() */}
       <div className="mb-8">
-        <EventFiltersForm currentFilters={filters} />
+        <Suspense fallback={<FiltersSkeleton />}>
+          <EventFiltersForm currentFilters={filters} />
+        </Suspense>
       </div>
 
-      {/* Lista de eventos */}
+      {/* Lista de eventos (filtrado aplicado en el servidor) */}
       <EventList
         events={events}
         emptyMessage="No se encontraron eventos con los filtros seleccionados"

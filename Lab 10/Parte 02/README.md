@@ -4,6 +4,8 @@
 
 > Aplicación fullstack con Server Components, Server Actions y React 19.
 
+**Deploy:** https://event-pass-kohl.vercel.app/
+
 ---
 
 ### 6. UI/UX Improvements (Latest)
