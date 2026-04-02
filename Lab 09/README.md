@@ -1,5 +1,4 @@
--------------------- * ------------------------
-Lab 09 — Parte 1: Paginación y Metadatos
+--------- * --------- Lab 09 — Parte 1: Paginación y Metadatos --------- * ---------
   RealEstate Hub API | Module 3
 
 DESCRIPCIÓN:
@@ -7,7 +6,6 @@ La API devolvía todas las propiedades de una sola vez, lo cual
 resulta ineficiente para conjuntos de datos grandes. Se implementó
 paginación real usando los parámetros page y limit, junto con
 metadatos de navegación en cada respuesta.
-
 
 CARACTERÍSTICAS IMPLEMENTADAS:
 - Acepta parámetros de consulta page y limit con valores por
@@ -19,7 +17,6 @@ CARACTERÍSTICAS IMPLEMENTADAS:
   valores negativos o no numéricos.
 - Queries en paralelo con $transaction para mayor eficiencia
   (findMany + count).
-
 
 ARCHIVOS MODIFICADOS:
 1. src/controllers/propertyController.ts
@@ -41,11 +38,8 @@ ARCHIVOS MODIFICADOS:
    - Usa skip y take en la query para traer solo la página pedida.
    - Retorna { data: Property[], total: number }.
 
-
--------------------- * ------------------------
-  Lab 09 — Parte 2: Estadísticas de Propiedades
+--------- * --------- Lab 09 — Parte 2: Estadísticas de Propiedades --------- * ---------
   RealEstate Hub API | Module 3
-
 
 DESCRIPCIÓN:
 Se implementó un nuevo endpoint GET /api/properties/stats que
@@ -53,7 +47,6 @@ devuelve estadísticas agregadas de todas las propiedades, como
 conteo por tipo, precio medio por tipo, rango de precios global
 y total de propiedades. Si la base de datos está vacía, devuelve
 ceros en lugar de errores.
-
 
 CARACTERÍSTICAS IMPLEMENTADAS:
 - Endpoint GET /api/properties/stats devuelve datos estadísticos.
@@ -63,7 +56,6 @@ CARACTERÍSTICAS IMPLEMENTADAS:
 - Recuento total de propiedades.
 - Usa groupBy y aggregate de Prisma para las consultas.
 - Base de datos vacía devuelve ceros, no errores.
-
 
 ARCHIVOS MODIFICADOS:
 1. src/controllers/propertyController.ts
@@ -82,4 +74,3 @@ ARCHIVOS MODIFICADOS:
      por tipo de propiedad.
    - Usa prisma.property.aggregate() para obtener min, max
      y count global.
-
