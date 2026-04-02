@@ -33,6 +33,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'storage.googleapis.com',
       },
+      {
+        // Permite cualquier dominio externo para imágenes de eventos
+        protocol: 'https',
+        hostname: '**',
+      },
     ],
   },
 

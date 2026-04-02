@@ -125,8 +125,14 @@ export async function createEvent(data: Omit<Event, 'id' | 'createdAt' | 'update
   const docRef = adminDb.collection(EVENTS_COLLECTION).doc();
   const now = new Date();
 
+  // Eliminamos campos undefined porque Firestore no los acepta.
+  // Esto ocurre cuando campos opcionales como imageUrl no se llenan en el formulario.
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([_, v]) => v !== undefined)
+  );
+
   const eventData = {
-    ...data,
+    ...cleanData,
     date: new Date(data.date), // Admin SDK supports native Date objects
     createdAt: now,
     updatedAt: now,

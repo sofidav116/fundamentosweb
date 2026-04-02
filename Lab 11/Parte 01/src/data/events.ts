@@ -105,3 +105,22 @@ export async function getEventStats(): Promise<{
     totalRegistered: events.reduce((sum, e) => sum + (e.registeredCount || 0), 0),
   };
 }
+
+// =============================================================================
+// FILTRAR EVENTOS POR ORGANIZADOR
+// =============================================================================
+
+/**
+ * Obtiene todos los eventos donde organizerId === userId.
+ *
+ * ## ¿Por qué filtrar en el servidor?
+ * Filtramos en la capa de datos para evitar exponer eventos
+ * de otros usuarios al cliente. Nunca enviamos más datos de
+ * los necesarios.
+ *
+ * @param userId - UID del organizador autenticado
+ */
+export async function getEventsByOrganizer(userId: string): Promise<Event[]> {
+  const events = await getEventsFirestore();
+  return events.filter((event) => event.organizerId === userId);
+}
