@@ -72,10 +72,10 @@ function DescriptionVariantsPanel({ onApply, onStart, onEnd }: DescriptionVarian
   const [generatedTags, setGeneratedTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const toneOptions: { value: DescriptionTone; label: string; emoji: string }[] = [
-    { value: 'formal', label: 'Formal', emoji: '🎩' },
-    { value: 'informal', label: 'Informal', emoji: '😊' },
-    { value: 'emocionante', label: 'Emocionante', emoji: '🚀' },
+  const toneOptions: { value: DescriptionTone; label: string }[] = [
+    { value: 'formal', label: '🎩 Formal' },
+    { value: 'informal', label: '😊 Informal' },
+    { value: 'emocionante', label: '🚀 Emocionante' },
   ];
 
   const handleGenerate = async () => {
@@ -137,27 +137,26 @@ function DescriptionVariantsPanel({ onApply, onStart, onEnd }: DescriptionVarian
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
-      {/* Header row: selector de tono + botón generar */}
+      {/* Header row: dropdown de tono + botón generar */}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-muted-foreground">Tono:</span>
+        <label htmlFor="tone-select" className="text-sm font-medium text-muted-foreground shrink-0">
+          Tono:
+        </label>
 
-        {/* Selector de tono como botones tipo pill */}
-        <div className="flex gap-2">
+        {/* Dropdown de tono */}
+        <select
+          id="tone-select"
+          value={tone}
+          onChange={(e) => setTone(e.target.value as DescriptionTone)}
+          disabled={isGenerating}
+          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+        >
           {toneOptions.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setTone(opt.value)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                tone === opt.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              {opt.emoji} {opt.label}
-            </button>
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
           ))}
-        </div>
+        </select>
 
         {/* Botón principal: Generar / Regenerar */}
         <Button
@@ -210,7 +209,11 @@ function DescriptionVariantsPanel({ onApply, onStart, onEnd }: DescriptionVarian
             <button
               key={index}
               type="button"
-              onClick={() => setSelectedIndex(index)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedIndex(index);
+              }}
               className={`w-full rounded-md border p-3 text-left text-sm transition-colors ${
                 selectedIndex === index
                   ? 'border-primary bg-primary/5 text-foreground'
