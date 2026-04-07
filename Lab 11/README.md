@@ -1,4 +1,5 @@
 ---- * ---- PARTE 1: MIS EVENTOS ---- * ----
+
 DESCRIPCIÓN: Implementación de la página "Mis Eventos", una ruta protegida
 que permite a los usuarios autenticados ver y gestionar
 únicamente los eventos que ellos han creado.
@@ -30,6 +31,7 @@ next.config.ts
     imágenes de cualquier dominio externo en next/image.
 
 ---- * ---- Parte 2: Generación de IA Mejorada ---- * ----
+
 DESCRIPCIÓN: Mejora de la función de IA en el formulario de creación de eventos de EventPass Pro.
 Se extendió la integración con Gemini AI para generar múltiples variantes de descripción
 con soporte de tonos, permitiendo al usuario elegir la que mejor se adapte a su evento.
